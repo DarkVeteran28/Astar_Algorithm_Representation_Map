@@ -10,6 +10,7 @@ export interface DimensionData {
 }
 
 export interface AlgorithmStepData {
+  step: number;
   lineIndex: number;
   currentNode: string;
   frontier: string[];
@@ -17,8 +18,25 @@ export interface AlgorithmStepData {
   pathSoFar: string[];
   gCosts: Record<string, number>;
   fCosts: Record<string, number>;
+  selectedNode: {
+    id: string;
+    x: number;
+    y: number;
+    g: number;
+    h: number;
+    f: number;
+  };
+  openSetDetails: Array<{
+    id: string;
+    x: number;
+    y: number;
+    g: number;
+    h: number;
+    f: number;
+  }>;
   description: string;
   detail: string;
+  explanation: string;
 }
 
 export const ALGORITHM_CODE_LINES = [
@@ -100,6 +118,27 @@ export function computeAStarSteps(startId: string, goalId: string): AlgorithmSte
     return path;
   };
 
+  const getNodeMetrics = (nodeId: string) => {
+    const node = CITY_NODES.find((n) => n.id === nodeId);
+    const g = gCost[nodeId] ?? 0;
+    const f = fCost[nodeId] ?? g + euclideanDist(nodeId, goalId);
+    const h = Math.max(0, f - g);
+
+    return {
+      id: nodeId,
+      x: node?.gridX ?? node?.x ?? 0,
+      y: node?.gridY ?? node?.y ?? 0,
+      g,
+      h,
+      f,
+    };
+  };
+
+  const buildCandidateDetails = (nodeIds: string[]) =>
+    nodeIds
+      .map((nodeId) => getNodeMetrics(nodeId))
+      .sort((a, b) => a.f - b.f || a.h - b.h || a.g - b.g);
+
   const getStartNode = CITY_NODES.find((n) => n.id === startId);
   const getGoalNode = CITY_NODES.find((n) => n.id === goalId);
   const startName = getStartNode?.name ?? startId;
@@ -107,6 +146,7 @@ export function computeAStarSteps(startId: string, goalId: string): AlgorithmSte
 
   // Step 0: Initialize
   steps.push({
+    step: steps.length,
     lineIndex: 1,
     currentNode: startId,
     frontier: [...openSet],
@@ -114,8 +154,11 @@ export function computeAStarSteps(startId: string, goalId: string): AlgorithmSte
     pathSoFar: [startId],
     gCosts: { ...gCost },
     fCosts: { ...fCost },
+    selectedNode: getNodeMetrics(startId),
+    openSetDetails: [],
     description: `Initialize open set with ${startName}`,
     detail: `Push ${startName} into the priority queue with f(n) = h(n) = ${fCost[startId]} km (straight-line to ${goalName}). g(n) = 0 — no movement yet.`,
+    explanation: `Starting at ${startName}. It is the only candidate, so A* seeds the search with h(n) = ${fCost[startId]}.`,
   });
 
   let iterations = 0;
@@ -125,15 +168,19 @@ export function computeAStarSteps(startId: string, goalId: string): AlgorithmSte
     iterations++;
     // Pop node with lowest fCost
     openSet.sort((a, b) => (fCost[a] ?? Infinity) - (fCost[b] ?? Infinity));
+    const candidateOrder = [...openSet];
     const current = openSet.shift()!;
 
     if (visited.includes(current)) continue;
     visited.push(current);
 
     const currentName = CITY_NODES.find((n) => n.id === current)?.name ?? current;
+    const currentMetrics = getNodeMetrics(current);
+    const openSetDetails = buildCandidateDetails(candidateOrder.filter((nodeId) => nodeId !== current));
 
     // Step: Pop current
     steps.push({
+      step: steps.length,
       lineIndex: 7,
       currentNode: current,
       frontier: [...openSet],
@@ -141,13 +188,20 @@ export function computeAStarSteps(startId: string, goalId: string): AlgorithmSte
       pathSoFar: getPath(current),
       gCosts: { ...gCost },
       fCosts: { ...fCost },
+      selectedNode: currentMetrics,
+      openSetDetails,
       description: `Pop ${currentName} (lowest f-cost = ${fCost[current]})`,
       detail: `${currentName} has the lowest f(n) = ${fCost[current]} km. Removing from open set and expanding its neighbors.`,
+      explanation:
+        openSetDetails.length > 0
+          ? `Chosen because it has the lowest f(n) among ${openSetDetails.length + 1} candidates.`
+          : `Chosen because it is the only candidate in the frontier.`,
     });
 
     if (current === goalId) {
       // Goal reached
       steps.push({
+        step: steps.length,
         lineIndex: 8,
         currentNode: current,
         frontier: [],
@@ -155,10 +209,13 @@ export function computeAStarSteps(startId: string, goalId: string): AlgorithmSte
         pathSoFar: getPath(current),
         gCosts: { ...gCost },
         fCosts: { ...fCost },
+        selectedNode: currentMetrics,
+        openSetDetails: [],
         description: `🎯 Goal reached! Path cost: ${gCost[current]} km`,
         detail: `current === goal → reconstruct path. Optimal route: ${getPath(current)
           .map((id) => CITY_NODES.find((n) => n.id === id)?.name ?? id)
           .join(' → ')} = ${gCost[current]} km total. A* found the shortest path!`,
+        explanation: `The selected node is the goal, so the search stops and reconstructs the optimal path.`,
       });
       break;
     }
@@ -186,6 +243,7 @@ export function computeAStarSteps(startId: string, goalId: string): AlgorithmSte
         .map((id) => CITY_NODES.find((n) => n.id === id)?.name ?? id)
         .join(', ');
       steps.push({
+        step: steps.length,
         lineIndex: 10,
         currentNode: current,
         frontier: [...openSet],
@@ -193,6 +251,8 @@ export function computeAStarSteps(startId: string, goalId: string): AlgorithmSte
         pathSoFar: getPath(current),
         gCosts: { ...gCost },
         fCosts: { ...fCost },
+        selectedNode: currentMetrics,
+        openSetDetails: buildCandidateDetails(openSet),
         description: `Expand ${currentName} → discover ${neighborNames}`,
         detail: `${currentName} connects to: ${newlyDiscovered
           .map((id) => {
@@ -203,6 +263,10 @@ export function computeAStarSteps(startId: string, goalId: string): AlgorithmSte
             return `${name} (${edge?.distanceKm ?? '?'} km, ${edge?.highway ?? ''})`;
           })
           .join(', ')}. Updated f-costs and pushed to frontier.`,
+        explanation:
+          openSet.length > 0
+            ? `Heuristic estimates are refreshed for ${openSet.length} frontier candidates after expanding ${currentName}.`
+            : `No better frontier candidates were added from ${currentName}.`,
       });
     }
   }

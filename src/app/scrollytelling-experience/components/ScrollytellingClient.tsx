@@ -16,6 +16,7 @@ export default function ScrollytellingClient() {
   const [destination, setDestination] = useState<string | null>(null);
   const [selectionMode, setSelectionMode] = useState<'origin' | 'destination'>('origin');
   const [morphProgress, setMorphProgress] = useState(0);
+  const [showHeuristicDetails, setShowHeuristicDetails] = useState(true);
   const rightPanelRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([null, null, null]);
 
@@ -124,6 +125,7 @@ export default function ScrollytellingClient() {
           destination={destination}
           onCityClick={handleCityClick}
           selectionMode={selectionMode}
+          showHeuristicDetails={showHeuristicDetails}
         />
 
         {/* Dimension indicator nav */}
@@ -161,6 +163,7 @@ export default function ScrollytellingClient() {
           origin={origin}
           destination={destination}
           selectionMode={selectionMode}
+          showHeuristicDetails={showHeuristicDetails}
           sectionRefs={sectionRefs}
           onNextAlgorithmStep={handleNextAlgorithmStep}
           onPrevAlgorithmStep={handlePrevAlgorithmStep}
@@ -168,6 +171,7 @@ export default function ScrollytellingClient() {
           onSetOrigin={handleSetOrigin}
           onSetDestination={handleSetDestination}
           onSelectionModeChange={setSelectionMode}
+          onShowHeuristicDetailsChange={setShowHeuristicDetails}
         />
       </div>
     </div>

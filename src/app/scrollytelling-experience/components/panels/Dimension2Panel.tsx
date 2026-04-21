@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ChevronRight, ChevronLeft, RotateCcw, Terminal, Cpu } from 'lucide-react';
+import { ChevronRight, ChevronLeft, RotateCcw, Terminal, Cpu, Eye, EyeOff } from 'lucide-react';
 import { ALGORITHM_CODE_LINES } from '../data/dimensions';
 import type { AlgorithmStepData } from '../data/dimensions';
 import { CITY_NODES } from '../data/mapData';
@@ -12,9 +12,11 @@ interface Props {
   algorithmSteps: AlgorithmStepData[];
   origin: string | null;
   destination: string | null;
+  showHeuristicDetails: boolean;
   onNext: () => void;
   onPrev: () => void;
   onReset: () => void;
+  onShowHeuristicDetailsChange: (value: boolean) => void;
 }
 
 export default function Dimension2Panel({
@@ -23,9 +25,11 @@ export default function Dimension2Panel({
   algorithmSteps,
   origin,
   destination,
+  showHeuristicDetails,
   onNext,
   onPrev,
   onReset,
+  onShowHeuristicDetailsChange,
 }: Props) {
   const currentStep = algorithmSteps[algorithmStep];
   const isFirst = algorithmStep === 0;
@@ -88,6 +92,23 @@ export default function Dimension2Panel({
             style={{ width: `${progress}%` }}
           />
         </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 mb-5">
+        <div className="text-[11px] font-mono-code text-white/35">
+          Heuristic postcard mirrors the selected node on the map.
+        </div>
+        <button
+          onClick={() => onShowHeuristicDetailsChange(!showHeuristicDetails)}
+          className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-[11px] font-mono-code transition-all ${
+            showHeuristicDetails
+              ? 'bg-sky-500/12 border-sky-500/30 text-sky-300'
+              : 'bg-white/5 border-white/10 text-white/45 hover:text-white/65'
+          }`}
+        >
+          {showHeuristicDetails ? <Eye size={12} /> : <EyeOff size={12} />}
+          Show heuristic details {showHeuristicDetails ? 'ON' : 'OFF'}
+        </button>
       </div>
 
       {/* Code IDE */}

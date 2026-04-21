@@ -1,4 +1,4 @@
-// File: /Users/likhiththejas/Downloads/rocket_app/src/app/scrollytelling-experience/page.tsx
+// File: /Users/likhiththejas/Documents/A* Algo/src/app/scrollytelling-experience/page.tsx
 import * as entry from '../../../../src/app/scrollytelling-experience/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

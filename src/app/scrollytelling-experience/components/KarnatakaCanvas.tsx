@@ -23,6 +23,7 @@ interface Props {
   destination: string | null;
   onCityClick: (cityId: string) => void;
   selectionMode: 'origin' | 'destination';
+  showHeuristicDetails: boolean;
 }
 
 function lerp(a: number, b: number, t: number) {
@@ -35,10 +36,11 @@ function getNodeColor(
   stepData: AlgorithmStepData | null
 ): string {
   if (dimension === 2 && stepData) {
-    if (stepData.currentNode === nodeId) return '#f59e0b';
-    if (stepData.visited.includes(nodeId)) return '#22c55e';
-    if (stepData.frontier.includes(nodeId)) return '#0ea5e9';
-    return 'rgba(80,80,100,0.6)';
+    if (stepData.currentNode === nodeId) return '#38bdf8';
+    if (stepData.pathSoFar.includes(nodeId) && stepData.currentNode !== nodeId) return '#22c55e';
+    if (stepData.frontier.includes(nodeId)) return '#facc15';
+    if (stepData.visited.includes(nodeId)) return 'rgba(120,130,150,0.55)';
+    return 'rgba(80,80,100,0.5)';
   }
   return '#1a6b8a';
 }
@@ -52,10 +54,12 @@ export default function KarnatakaCanvas({
   destination,
   onCityClick,
   selectionMode,
+  showHeuristicDetails,
 }: Props) {
   const [drawProgress, setDrawProgress] = useState(0);
   const [gridOpacity, setGridOpacity] = useState(0);
   const [pulseNodes, setPulseNodes] = useState<Set<string>>(new Set());
+  const [postcardVisible, setPostcardVisible] = useState(true);
   const animFrameRef = useRef<number | null>(null);
 
   // Road draw-on animation on mount
@@ -97,6 +101,22 @@ export default function KarnatakaCanvas({
     }
   }, [algorithmStep, dimension, algorithmSteps]);
 
+  useEffect(() => {
+    if (dimension !== 2 || !showHeuristicDetails) {
+      setPostcardVisible(false);
+      return;
+    }
+
+    setPostcardVisible(false);
+    const hideTimer = window.setTimeout(() => {
+      setPostcardVisible(true);
+    }, 130);
+
+    return () => {
+      window.clearTimeout(hideTimer);
+    };
+  }, [algorithmStep, dimension, showHeuristicDetails]);
+
   const currentAlgStep = dimension === 2 ? (algorithmSteps[algorithmStep] ?? null) : null;
 
   // Morph interpolation — only applies in D1 transition
@@ -134,8 +154,13 @@ export default function KarnatakaCanvas({
     return currentAlgStep.frontier.includes(edge.from) || currentAlgStep.frontier.includes(edge.to);
   };
 
+  const getNodeLabelPosition = (nodeId: string) => {
+    const pos = getNodePos(nodeId);
+    return { x: pos.x + 14, y: pos.y - 22 };
+  };
+
   return (
-    <div className="w-full h-full flex items-center justify-center">
+    <div className="relative w-full h-full flex items-center justify-center">
       <svg
         viewBox="0 0 800 600"
         className="w-full h-full max-h-full"
@@ -495,13 +520,13 @@ export default function KarnatakaCanvas({
 
           if (dimension === 2) {
             if (isPath) {
-              strokeColor = '#f59e0b';
+              strokeColor = '#22c55e';
               strokeWidth = 3.5;
             } else if (isFrontier) {
-              strokeColor = 'rgba(14,165,233,0.55)';
+              strokeColor = 'rgba(250,204,21,0.45)';
               strokeWidth = 2;
             } else {
-              strokeColor = 'rgba(120,120,140,0.3)';
+              strokeColor = 'rgba(120,120,140,0.22)';
               strokeWidth = 1.5;
             }
           } else if (dimension === 1) {
@@ -554,7 +579,7 @@ export default function KarnatakaCanvas({
                 <path
                   d={pathD}
                   fill="none"
-                  stroke="#f59e0b"
+                  stroke="#22c55e"
                   strokeWidth="8"
                   opacity="0.2"
                   filter="url(#softGlow)"
@@ -588,7 +613,7 @@ export default function KarnatakaCanvas({
                 <text
                   x={(fromPos.x + toPos.x) / 2}
                   y={(fromPos.y + toPos.y) / 2 - 9}
-                  fill={isPath ? '#f59e0b' : 'rgba(148,163,184,0.55)'}
+                  fill={isPath ? '#22c55e' : isFrontier ? '#facc15' : 'rgba(148,163,184,0.55)'}
                   fontSize="9"
                   textAnchor="middle"
                   fontWeight={isPath ? '700' : '400'}
@@ -639,6 +664,10 @@ export default function KarnatakaCanvas({
           const isSelected = isOrigin || isDest;
           const isPulsing = pulseNodes.has(node.id);
           const isCurrentAlg = currentAlgStep?.currentNode === node.id;
+          const isOpenCandidate = currentAlgStep?.frontier.includes(node.id) ?? false;
+          const isClosedCandidate = currentAlgStep?.visited.includes(node.id) ?? false;
+          const isPathNode = currentAlgStep?.pathSoFar.includes(node.id) ?? false;
+          const heuristicDetail = currentAlgStep?.openSetDetails.find((detail) => detail.id === node.id);
 
           const nodeSize = isSelected ? 9 : 7;
           const morphedSize = lerp(nodeSize, nodeSize * 1.1, morphT);
@@ -661,6 +690,19 @@ export default function KarnatakaCanvas({
                 />
               )}
 
+              {dimension === 2 && isCurrentAlg && (
+                <circle
+                  cx={pos.x}
+                  cy={pos.y}
+                  r={morphedSize + 16}
+                  fill="none"
+                  stroke="#38bdf8"
+                  strokeWidth="2.5"
+                  opacity="0.9"
+                  className="node-pulse"
+                />
+              )}
+
               {/* Outer glow (D1+ only) */}
               {dimension >= 1 && (
                 <circle
@@ -669,10 +711,12 @@ export default function KarnatakaCanvas({
                   r={morphedSize + 7}
                   fill={
                     isCurrentAlg
-                      ? 'url(#nodeGlowAmber)'
-                      : currentAlgStep?.visited.includes(node.id)
+                      ? 'url(#nodeGlowSky)'
+                      : isPathNode
                         ? 'url(#nodeGlowGreen)'
-                        : 'url(#nodeGlowSky)'
+                        : isOpenCandidate
+                          ? 'url(#nodeGlowAmber)'
+                          : 'url(#nodeGlowSky)'
                   }
                 />
               )}
@@ -684,10 +728,10 @@ export default function KarnatakaCanvas({
                   points={`${pos.x},${pos.y - morphedSize * 1.4} ${pos.x + morphedSize * 1.4},${pos.y} ${pos.x},${pos.y + morphedSize * 1.4} ${pos.x - morphedSize * 1.4},${pos.y}`}
                   fill={actualColor}
                   opacity={0.92}
-                  stroke={isSelected ? '#ffffff' : 'rgba(255,255,255,0.2)'}
-                  strokeWidth={isSelected ? 1.5 : 0.5}
+                  stroke={isCurrentAlg ? '#e0f2fe' : isSelected ? '#ffffff' : 'rgba(255,255,255,0.2)'}
+                  strokeWidth={isCurrentAlg ? 2.2 : isSelected ? 1.5 : 0.5}
                   style={{ transition: 'fill 0.5s ease' }}
-                  filter={isSelected ? 'url(#glowFilter)' : undefined}
+                  filter={isCurrentAlg || isSelected ? 'url(#glowFilter)' : undefined}
                 />
               ) : dimension === 0 ? (
                 // Realistic map city dot — styled like Google Maps
@@ -732,10 +776,10 @@ export default function KarnatakaCanvas({
                   r={morphedSize}
                   fill={actualColor}
                   opacity={0.92}
-                  stroke="white"
-                  strokeWidth={isSelected ? 2 : 1.2}
+                  stroke={isCurrentAlg ? '#e0f2fe' : 'white'}
+                  strokeWidth={isCurrentAlg ? 2.3 : isSelected ? 2 : 1.2}
                   style={{ transition: 'fill 0.5s ease' }}
-                  filter={isSelected ? 'url(#glowFilter)' : undefined}
+                  filter={isCurrentAlg || isSelected ? 'url(#glowFilter)' : undefined}
                 />
               )}
 
@@ -847,7 +891,7 @@ export default function KarnatakaCanvas({
                     <text
                       x={pos.x + 38}
                       y={pos.y + 4}
-                      fill={actualColor}
+                      fill={isCurrentAlg ? '#38bdf8' : actualColor}
                       fontSize="9"
                       textAnchor="middle"
                       fontFamily="JetBrains Mono, monospace"
@@ -856,6 +900,57 @@ export default function KarnatakaCanvas({
                     </text>
                   </g>
                 )}
+
+              {dimension === 2 && showHeuristicDetails && heuristicDetail && !isCurrentAlg && (
+                <g>
+                  <rect
+                    x={getNodeLabelPosition(node.id).x - 4}
+                    y={getNodeLabelPosition(node.id).y - 11}
+                    width="54"
+                    height="18"
+                    rx="5"
+                    fill="rgba(15,23,42,0.82)"
+                    stroke="rgba(250,204,21,0.45)"
+                    strokeWidth="0.8"
+                  />
+                  <text
+                    x={getNodeLabelPosition(node.id).x + 23}
+                    y={getNodeLabelPosition(node.id).y + 1}
+                    fill="#fde68a"
+                    fontSize="8.5"
+                    textAnchor="middle"
+                    fontFamily="JetBrains Mono, monospace"
+                  >
+                    h={heuristicDetail.h}
+                  </text>
+                </g>
+              )}
+
+              {dimension === 2 && isCurrentAlg && (
+                <g>
+                  <rect
+                    x={pos.x + 16}
+                    y={pos.y - 34}
+                    width="54"
+                    height="18"
+                    rx="5"
+                    fill="rgba(56,189,248,0.18)"
+                    stroke="rgba(56,189,248,0.8)"
+                    strokeWidth="1"
+                  />
+                  <text
+                    x={pos.x + 43}
+                    y={pos.y - 22}
+                    fill="#bae6fd"
+                    fontSize="8.5"
+                    textAnchor="middle"
+                    fontWeight="700"
+                    fontFamily="JetBrains Mono, monospace"
+                  >
+                    CHOSEN
+                  </text>
+                </g>
+              )}
             </g>
           );
         })}
@@ -995,6 +1090,69 @@ export default function KarnatakaCanvas({
           D{dimension}
         </text>
       </svg>
+
+      {dimension === 2 && currentAlgStep && showHeuristicDetails && (
+        <HeuristicPostcard stepData={currentAlgStep} visible={postcardVisible} />
+      )}
+    </div>
+  );
+}
+
+function HeuristicPostcard({
+  stepData,
+  visible,
+}: {
+  stepData: AlgorithmStepData;
+  visible: boolean;
+}) {
+  const candidateCount = stepData.openSetDetails.length + 1;
+
+  return (
+    <div
+      className={`absolute right-4 top-4 w-[250px] max-w-[calc(100%-2rem)] rounded-2xl border border-white/15 bg-slate-950/55 p-4 shadow-[0_16px_40px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all duration-300 sm:right-5 sm:top-5 ${
+        visible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-mono-code uppercase tracking-[0.25em] text-sky-300/80">
+            Step {stepData.step + 1}
+          </div>
+          <div className="mt-1 text-sm font-semibold text-white">🎯 Evaluating Node</div>
+        </div>
+        <div className="rounded-full border border-sky-400/25 bg-sky-400/10 px-2 py-1 text-[10px] font-mono-code text-sky-200">
+          Chosen
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+        <div className="text-sm font-semibold text-sky-200">{stepData.selectedNode.id}</div>
+        <div className="mt-1 text-[11px] font-mono-code text-white/45">
+          ({stepData.selectedNode.x}, {stepData.selectedNode.y})
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <MetricChip label="g(n)" value={stepData.selectedNode.g} tone="text-white" />
+        <MetricChip label="h(n)" value={stepData.selectedNode.h} tone="text-amber-300" />
+        <MetricChip label="f(n)" value={stepData.selectedNode.f} tone="text-sky-300" />
+      </div>
+
+      <div className="mt-3 rounded-xl border border-emerald-400/15 bg-emerald-400/8 px-3 py-2">
+        <div className="text-[11px] font-mono-code text-emerald-300/85">
+          Lowest f(n) among {candidateCount} candidate{candidateCount === 1 ? '' : 's'}
+        </div>
+        <p className="mt-1 text-xs leading-relaxed text-white/65">{stepData.explanation}</p>
+      </div>
+    </div>
+  );
+}
+
+function MetricChip({ label, value, tone }: { label: string; value: number; tone: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 px-2.5 py-2">
+      <div className="text-[10px] font-mono-code text-white/35">{label}</div>
+      <div className={`mt-1 text-sm font-semibold font-mono-code ${tone}`}>{value}</div>
     </div>
   );
 }

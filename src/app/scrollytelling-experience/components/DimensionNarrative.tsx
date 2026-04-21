@@ -14,6 +14,7 @@ interface Props {
   origin: string | null;
   destination: string | null;
   selectionMode: 'origin' | 'destination';
+  showHeuristicDetails: boolean;
   sectionRefs: React.MutableRefObject<(HTMLDivElement | null)[]>;
   onNextAlgorithmStep: () => void;
   onPrevAlgorithmStep: () => void;
@@ -21,6 +22,7 @@ interface Props {
   onSetOrigin: (cityId: string) => void;
   onSetDestination: (cityId: string) => void;
   onSelectionModeChange: (mode: 'origin' | 'destination') => void;
+  onShowHeuristicDetailsChange: (value: boolean) => void;
 }
 
 export default function DimensionNarrative({
@@ -30,6 +32,7 @@ export default function DimensionNarrative({
   origin,
   destination,
   selectionMode,
+  showHeuristicDetails,
   sectionRefs,
   onNextAlgorithmStep,
   onPrevAlgorithmStep,
@@ -37,6 +40,7 @@ export default function DimensionNarrative({
   onSetOrigin,
   onSetDestination,
   onSelectionModeChange,
+  onShowHeuristicDetailsChange,
 }: Props) {
   return (
     <div className="min-h-[300vh]">
@@ -98,9 +102,11 @@ export default function DimensionNarrative({
           algorithmSteps={algorithmSteps}
           origin={origin}
           destination={destination}
+          showHeuristicDetails={showHeuristicDetails}
           onNext={onNextAlgorithmStep}
           onPrev={onPrevAlgorithmStep}
           onReset={onResetAlgorithm}
+          onShowHeuristicDetailsChange={onShowHeuristicDetailsChange}
         />
       </div>
 
