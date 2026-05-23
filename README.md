@@ -1,3 +1,8 @@
+<img width="1710" height="982" alt="Screenshot 2026-05-23 at 7 26 57 PM" src="https://github.com/user-attachments/assets/258fabfc-7bc3-4722-bd23-b816fe411830" />
+<img width="1710" height="987" alt="Screenshot 2026-05-23 at 7 26 40 PM" src="https://github.com/user-attachments/assets/5ec3e353-f876-4432-8caf-ee1874405f92" />
+<img width="1710" height="982" alt="Screenshot 2026-05-23 at 7 26 19 PM" src="https://github.com/user-attachments/assets/a325d90f-1aea-4184-b7a5-4331f700e99b" />
+<img width="1710" height="985" alt="Screenshot 2026-05-23 at 7 25 30 PM" src="https://github.com/user-attachments/assets/172cd0bd-cfd1-4c4c-be6c-343bedd7f1d6" />
+<img width="1709" height="983" alt="Screenshot 2026-05-23 at 7 25 46 PM" src="https://github.com/user-attachments/assets/209d5a4f-9101-4bc1-ba86-a3f60adebb98" />
 # RouteDeconstruct
 
 RouteDeconstruct is a cinematic scrollytelling app built with Next.js that explains how map routing can be modeled and visualized through Karnataka's road network. It turns a set of real-world city connections into an interactive teaching experience for graph abstraction and the A* pathfinding algorithm.
